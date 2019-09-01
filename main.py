@@ -13,7 +13,7 @@ import csv
 
 
 # First things first : read metadata from metadata.txt
-META = './file/metadata.txt'
+META = './files/metadata.txt'
 tables_list = {}            # Since multiple tables
 
 def read_metadata(file):
