@@ -12,6 +12,7 @@ Build an SQL parser through CLI
 # done: 3, 1, 4 + single tables
 # NEED TO DO : aggregrate function + distinct with where condition
 # FIRST: do join
+# https://github.com/harry-7/minisqlengine
 
 import re
 import sys
@@ -211,6 +212,27 @@ def normal_where(clauses, columns, table):
 
 def join_where(clauses, columns, tables):
     operators = ['>', '<', '>=', '<=', '=']
+    now = ''
+    if 'and' in condition:
+        condition = condition.split('and')
+        now = 'and'
+    elif 'or' in condition:
+        condition = condition.split('or')
+        now = 'or'
+    else:
+        condition = [condition]
+    if len(condition) > 2:
+        error_exit('Maximum one AND clause can be given')
+    condition1 = condition[0]
+    for operator in operators:
+        if operator in condition1:
+            condition1 = condition1.split(operator)
+    if len(condition1) == 2 and '.' in condition1[1]:
+        process_where_normal_join([condition, oper], columns,
+                                        tables, tables_data)
+        return
+    process_where_special_join(sentence, columns, tables,
+                                    tables_data)
 
 
 def join(columns, tables):
