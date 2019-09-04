@@ -9,7 +9,9 @@ Build an SQL parser through CLI
 
 
 # TO DO : Check errors
-# done: 3, 1 
+# done: 3, 1, 4 + single tables
+# NEED TO DO : aggregrate function + distinct with where condition
+# FIRST: do join
 
 import re
 import sys
@@ -47,8 +49,6 @@ def read_metadata(file):
             begin = 0
         elif line != "<end_table>":
             tables_list[table_name].append(line)
-
-    begin = 0
 
 def get_datacolumns(table_name):
     '''
@@ -154,12 +154,26 @@ def distinct_pair_process(dist_pair, tables):
         columns_in_table[table].append(column)
     print(tables_found, columns_in_table)
 
-    data_injoin = []
-    for item1 in tables_needed[tables_found[0]]:
-        for item2 in tables_needed[tables_found[1]]:
-            data_injoin.append(item1 + item2)
-    display_output(tables_found, columns_in_table, data_injoin, join=True, distinct=True)
-
+    if len(tables_found) > 1:
+        data_injoin = []
+        for item1 in tables_needed[tables_found[0]]:
+            for item2 in tables_needed[tables_found[1]]:
+                data_injoin.append(item1 + item2)
+        display_output(tables_found, columns_in_table, data_injoin, join=True, distinct=True)
+    else:
+        table = tables_found[0]
+        columns = columns_in_table[table]
+        print(get_headers(table, columns))
+        print("-"*len(get_headers(table, columns)))
+        result = []
+        for row in tables_needed[table]:
+            ans = ''
+            for column in columns:
+                ans += row[tables_list[table].index(column)] + '\t|'
+            if ans.strip('\t|') not in result:
+                result.append(ans.strip('\t|'))
+        for row in result:
+            print(row)
 
 
 def normal_where(clauses, columns, table):
@@ -327,6 +341,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print("")
 
 read_metadata(META)
-query = "Select distinct A, D from table1, table2"
+query = "Select A, table2.B from table1, table2"
 parse_query(query)
     
