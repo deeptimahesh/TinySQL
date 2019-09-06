@@ -258,18 +258,13 @@ def join_conditionally(now, clauses, columns, tables):
                 tables_found.append(table)
             columns_in_table[table].append(column)
     print(columns_in_table, tables_found)
-    # join_data = join_needed_data(now, tables_needed, needed_data, tables_data)
 
     final_data = []
     if now == 'and':
-        # table1 = format_string(tables[0])
-        # table2 = format_string(tables[1])
         for item1 in data[tables[0]]:
             for item2 in data[tables[1]]:
                 final_data.append(item1 + item2)
     elif now == 'or':
-        # table1 = format_string(tables[0])
-        # table2 = format_string(tables[1])
         for item1 in data[tables[0]]:
             for item2 in tables_needed[tables[1]]:
                 if item2 not in data[tables[1]]:
@@ -278,6 +273,9 @@ def join_conditionally(now, clauses, columns, tables):
             for item2 in tables_needed[tables[0]]:
                 if item2 not in data[tables[0]]:
                     final_data.append(item2 + item1)
+        for item1 in data[tables[0]]:
+            for item2 in data[tables[1]]:
+                final_data.append(item1 + item2)
     else:
         table1 = list(data.keys())[0]
         flag = False
@@ -285,7 +283,6 @@ def join_conditionally(now, clauses, columns, tables):
         if table1 == tables_found[1]:
             table2 = tables_found[0]
             flag = True
-        print(data[table1])
 
         for item1 in data[table1]:
             for item2 in tables_needed[table2]:
@@ -293,8 +290,6 @@ def join_conditionally(now, clauses, columns, tables):
                     final_data.append(item2 + item1)
                 else:
                     final_data.append(item1 + item2)
-    # return final_data
-    print(final_data)
     display_output(tables_found, columns_in_table, final_data, join=True)
 
 def join_data(clauses, columns, tables):
@@ -449,6 +444,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print("")
 
 read_metadata(META)
-query = "Select D from table2 where D > 10000"
+query = "Select A, D from table1, table2 where A < 0 and D > 10000"
 parse_query(query)
     
