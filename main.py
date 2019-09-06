@@ -9,9 +9,8 @@ Build an SQL parser through CLI
 
 
 # TO DO : Check errors
-# done: 3, 1, 4 + single tables
-# NEED TO DO : aggregrate function + distinct with where condition
-# FIRST: do join
+# done: 3, 1, 4 + single tables, join without condition
+# NEED TO DO : aggregrate function + distinct with where  + error conditions + join condition
 # https://github.com/harry-7/minisqlengine
 
 import re
@@ -142,6 +141,8 @@ def execute(columns, functions, distincts, dist_pair, tables_inquery, clauses=[]
         normal_where(clauses, columns, tables_inquery[0])
     elif len(tables_inquery) > 1 and len(clauses) == 0:
         join(columns, tables_inquery)
+    elif len(tables_inquery) > 1 and len(clauses) > 0:
+        join_where(clauses, columns, tables_inquery)
 
 def distinct_pair_process(dist_pair, tables):
     columns_in_table = {}
@@ -211,29 +212,114 @@ def normal_where(clauses, columns, table):
                 print(ans.strip('\t|'))
 
 def join_where(clauses, columns, tables):
-    operators = ['>', '<', '>=', '<=', '=']
+    operators = ['>=', '<=', '>', '<', '=']
     now = ''
-    if 'and' in condition:
-        condition = condition.split('and')
+    og = clauses
+    if 'and' in clauses:
+        clauses = clauses.split('and')
         now = 'and'
-    elif 'or' in condition:
-        condition = condition.split('or')
+    elif 'or' in clauses:
+        clauses = clauses.split('or')
         now = 'or'
     else:
-        condition = [condition]
-    if len(condition) > 2:
-        error_exit('Maximum one AND clause can be given')
-    condition1 = condition[0]
+        clauses = [clauses]
+    if len(clauses) > 2:
+        sys.stderr.write("Error: Only two clauses joined by ONE or/and is viable.\n")
+        quit(-1)
+    print(clauses)
+    
+    condition1 = clauses[0]
     for operator in operators:
         if operator in condition1:
             condition1 = condition1.split(operator)
-    if len(condition1) == 2 and '.' in condition1[1]:
-        process_where_normal_join([condition, oper], columns,
-                                        tables, tables_data)
-        return
-    process_where_special_join(sentence, columns, tables,
-                                    tables_data)
+    # # SAY WHAT
+    # if len(condition1) == 2 and '.' in condition1[1]:
+    #     normal_join_where([condition, now], columns, tables, tables_data)
+    #     return
+    join_conditionally(now, clauses, columns, tables)
 
+
+def join_conditionally(now, clauses, columns, tables):
+    data = join_data(clauses, columns, tables)
+
+    columns_in_table = {}
+    tables_found = []
+    if len(columns) == 1 and columns[0] == '*':
+        for table in tables:
+            columns_in_table[table] = []
+            for column in tables_list[table]:
+                columns_in_table[table].append(column)
+        tables_found = tables
+    else:
+        for column in columns:
+            table, column = search_column(column, tables)
+            if table not in columns_in_table.keys():
+                columns_in_table[table] = []
+                tables_found.append(table)
+            columns_in_table[table].append(column)
+    print(columns_in_table, tables_found)
+    # join_data = join_needed_data(now, tables_needed, needed_data, tables_data)
+
+    final_data = []
+    if now == 'and':
+        # table1 = format_string(tables[0])
+        # table2 = format_string(tables[1])
+        for item1 in data[tables[0]]:
+            for item2 in data[tables[1]]:
+                final_data.append(item1 + item2)
+    elif now == 'or':
+        # table1 = format_string(tables[0])
+        # table2 = format_string(tables[1])
+        for item1 in data[tables[0]]:
+            for item2 in tables_needed[tables[1]]:
+                if item2 not in data[tables[1]]:
+                    final_data.append(item1 + item2)
+        for item1 in data[tables[1]]:
+            for item2 in tables_needed[tables[0]]:
+                if item2 not in data[tables[0]]:
+                    final_data.append(item2 + item1)
+    else:
+        table1 = list(data.keys())[0]
+        flag = False
+        table2 = tables_found[1]
+        if table1 == tables_found[1]:
+            table2 = tables_found[0]
+            flag = True
+        print(data[table1])
+
+        for item1 in data[table1]:
+            for item2 in tables_needed[table2]:
+                if flag:
+                    final_data.append(item2 + item1)
+                else:
+                    final_data.append(item1 + item2)
+    # return final_data
+    print(final_data)
+    display_output(tables_found, columns_in_table, final_data, join=True)
+
+def join_data(clauses, columns, tables):
+    operators = ['<=','>=','<', '>', '=']
+    needed_data = {}
+    for query in clauses:
+        needed = []
+        for operator in operators:
+            if operator in query:
+                needed = query.split(operator)
+                break
+        needed = [(re.sub(' +', ' ', word)).strip() for word in needed]
+        table, column = search_column(needed[0], tables)
+        needed_data[table] = []
+        query = query.replace(needed[0], ' ' + column + ' ')
+        for data in tables_needed[table]:
+            evaluator = generate_evals(data, table, query)
+            try:
+                if eval(evaluator):
+                    needed_data[table].append(data)
+                    # print(needed_data)
+            except NameError:
+                sys.stderr.write("Error: Invalid condition\n")
+                quit(-1)
+    return needed_data
 
 def join(columns, tables):
     '''
@@ -363,6 +449,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print("")
 
 read_metadata(META)
-query = "Select A, table2.B from table1, table2"
+query = "Select D from table2 where D > 10000"
 parse_query(query)
     
