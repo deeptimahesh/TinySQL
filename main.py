@@ -415,8 +415,15 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
                 result.append(ans.strip('\t|'))
         for row in result:
             print(row)
-            
-            
+    elif len(tables) == 1 and join:
+        header1 = get_headers(tables[0], columns[tables[0]])
+        print(header1)
+        print("-"*len(header1))
+        for item in data:
+            ans = ''
+            for column in columns[tables[0]]:
+                ans += item[tables_list[tables[0]].index(column)] + '\t|'
+            print(ans.strip('\t|'))
             
     elif join:
         header1 = get_headers(tables[0], columns[tables[0]])
@@ -431,7 +438,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
                 ans += item[tables_list[tables[1]].index(column) +
                             len(tables_list[tables[0]])] + '\t|'
             print(ans.strip('\t|'))
-
     else:
         for table in tables:
             print(get_headers(table, columns[table]))
@@ -444,6 +450,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print("")
 
 read_metadata(META)
-query = "Select A, D from table1, table2 where A < 0 and D > 10000"
+query = "Select A, table1.B from table1, table2 where A < 0 or D > 10000"
 parse_query(query)
     
