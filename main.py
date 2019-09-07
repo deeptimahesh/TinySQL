@@ -269,11 +269,61 @@ def join_where(clauses, columns, tables):
         if operator in condition1:
             condition1 = condition1.split(operator)
     # # SAY WHAT
-    # if len(condition1) == 2 and '.' in condition1[1]:
-    #     normal_join_where([condition, now], columns, tables, tables_data)
-    #     return
-    join_conditionally(now, clauses, columns, tables)
+    if len(condition1) == 2 and '.' in condition1[1]:
+        condition_join(condition1, columns, tables)
+    else:
+        join_conditionally(now, clauses, columns, tables)
 
+def condition_join(clauses, columns, tables):
+    if len(clauses) > 2:
+        sys.stderr.write("Error: Join condition invalid\n")
+        quit(-1)
+    operator = '=='
+
+    conditional_columns = [(re.sub(' +', ' ', word)).strip() for word in clauses]
+    
+    columns_cond = {}
+    tables_found = []
+    for column in conditional_columns:
+        table, column = search_column(column, tables)
+        if table not in columns_cond.keys():
+            columns_cond[table] = []
+            tables_found.append(table)
+        columns_cond[table].append(column)
+    
+    discard = []
+    keep = []
+
+    column1 = tables_list[tables[0]].index(columns_cond[tables[0]][0])
+    column2 = tables_list[tables[1]].index(columns_cond[tables[1]][0])
+
+    for data in tables_needed[tables[0]]:
+        for row in tables_needed[tables[1]]:
+            evaluator = data[column1] + '==' + row[column2]
+            if eval(evaluator):
+                keep.append(data + row)
+    print(keep)
+    
+    final_columns = {}
+    final_tables = []
+    if len(columns) == 1 and columns[0] == '*':
+        for table in tables:
+            final_columns[table] = []
+            for column in tables_list[table]:
+                final_columns[table].append(column)
+        final_tables = tables
+    else:
+        for column in columns:
+            table, column = search_column(column, tables)
+            if table not in final_columns.keys():
+                final_columns[table] = []
+                final_tables.append(table)
+            final_columns[table].append(column)
+    
+    display_output(final_tables, final_columns, keep, join=True)
+
+   
+    
 
 def join_conditionally(now, clauses, columns, tables):
     data = join_data(clauses, columns, tables)
@@ -485,6 +535,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print("")
 
 read_metadata(META)
-query = "Select min(A) from table1 where A > 0"
+query = "Select A, D from table1, table2 where table1.B = table2.B"
 parse_query(query)
     
