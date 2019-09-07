@@ -278,8 +278,7 @@ def condition_join(clauses, columns, tables):
     if len(clauses) > 2:
         sys.stderr.write("Error: Join condition invalid\n")
         quit(-1)
-    operator = '=='
-
+        
     conditional_columns = [(re.sub(' +', ' ', word)).strip() for word in clauses]
     
     columns_cond = {}
@@ -290,8 +289,6 @@ def condition_join(clauses, columns, tables):
             columns_cond[table] = []
             tables_found.append(table)
         columns_cond[table].append(column)
-    
-    discard = []
     keep = []
 
     column1 = tables_list[tables[0]].index(columns_cond[tables[0]][0])
@@ -302,15 +299,22 @@ def condition_join(clauses, columns, tables):
             evaluator = data[column1] + '==' + row[column2]
             if eval(evaluator):
                 keep.append(data + row)
-    print(keep)
     
     final_columns = {}
     final_tables = []
+
+    flag = 0
     if len(columns) == 1 and columns[0] == '*':
         for table in tables:
             final_columns[table] = []
             for column in tables_list[table]:
-                final_columns[table].append(column)
+                if column in columns_cond[table]:
+                    if flag == 0:
+                        final_columns[table].append(column)
+                        flag = 1
+                        continue
+                else:
+                    final_columns[table].append(column)
         final_tables = tables
     else:
         for column in columns:
@@ -319,7 +323,7 @@ def condition_join(clauses, columns, tables):
                 final_columns[table] = []
                 final_tables.append(table)
             final_columns[table].append(column)
-    
+    print(columns_cond, final_columns, final_tables)
     display_output(final_tables, final_columns, keep, join=True)
 
    
@@ -535,6 +539,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print("")
 
 read_metadata(META)
-query = "Select A, D from table1, table2 where table1.B = table2.B"
+query = "Select * from table1, table2 where table1.B = table2.B"
 parse_query(query)
     
