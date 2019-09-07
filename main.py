@@ -68,8 +68,6 @@ def get_datacolumns(table_name):
     src.close()
     return data
 
-# To implement: Select all from table
-
 def parse_query(line):
     '''
         Parse query
@@ -137,12 +135,50 @@ def execute(columns, functions, distincts, dist_pair, tables_inquery, clauses=[]
     '''
     if len(dist_pair) != 0:
         distinct_pair_process(dist_pair, tables_inquery)
+    elif len(functions) > 0:
+        process_func(clauses, columns, tables_inquery[0], functions) # since only single column
     elif len(tables_inquery) == 1:
         normal_where(clauses, columns, tables_inquery[0])
     elif len(tables_inquery) > 1 and len(clauses) == 0:
         join(columns, tables_inquery)
     elif len(tables_inquery) > 1 and len(clauses) > 0:
         join_where(clauses, columns, tables_inquery)
+
+def process_func(clauses, columns, table, functions):
+    '''
+        Process Min, Max, Avg, Sum
+    '''
+    columns = []
+    func = functions[0][0]
+    columns.append(functions[0][1])
+    print(clauses)
+    print(get_headers(table, columns))
+    print("-"*len(get_headers(table, columns)))
+
+    if(len(clauses) != 0):
+        data = []
+        for row in tables_needed[table]:
+            evaluator = generate_evals(row, table, clauses)
+            if eval(evaluator):
+                for column in columns:
+                    data.append(float(row[tables_list[table].index(column)]))
+    else:
+        data = []
+        for row in tables_needed[table]:
+            for column in columns:
+                data.append(float(row[tables_list[table].index(column)]))
+    
+    result = 0
+    if func.lower() == 'avg':
+        result += sum(data) / len(data)
+    elif func.lower() == 'sum':
+        result += sum(data)
+    elif func.lower() == 'max':
+        result = max(data)
+    elif func.lower() == 'min':
+        result = min(data)
+
+    print(result)
 
 def distinct_pair_process(dist_pair, tables):
     columns_in_table = {}
@@ -257,7 +293,6 @@ def join_conditionally(now, clauses, columns, tables):
                 columns_in_table[table] = []
                 tables_found.append(table)
             columns_in_table[table].append(column)
-    print(columns_in_table, tables_found)
 
     final_data = []
     if now == 'and':
@@ -450,6 +485,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print("")
 
 read_metadata(META)
-query = "Select A, table1.B from table1, table2 where A < 0 or D > 10000"
+query = "Select min(A) from table1 where A > 0"
 parse_query(query)
     
