@@ -7,7 +7,6 @@ Build an SQL parser through CLI
 
 
 # TO DO : Check errors
-# https://github.com/harry-7/minisqlengine
 
 import re
 import sys
