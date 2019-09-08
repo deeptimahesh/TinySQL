@@ -3,14 +3,10 @@ Created On: Aug 29, 2019
 Author: Deepti
 
 Build an SQL parser through CLI
-
-
 '''
 
 
 # TO DO : Check errors
-# done: 3, 1, 4 + single tables, join without condition
-# NEED TO DO : aggregrate function + distinct with where  + error conditions + join condition
 # https://github.com/harry-7/minisqlengine
 
 import re
@@ -122,7 +118,7 @@ def parse_query(line):
             if condition != '':
                 columns.append(condition.strip('()'))
 
-    print(columns, functions, distincts, dist_pair)
+    # print(columns, functions, distincts, dist_pair)
     # Now that we got all that we needed
     if len(clauses) > 1:
         execute(columns, functions, distincts, dist_pair, tables_inquery, clauses[1])
@@ -151,14 +147,14 @@ def process_func(clauses, columns, table, functions):
     columns = []
     func = functions[0][0]
     columns.append(functions[0][1])
-    print(clauses)
-    print(get_headers(table, columns))
-    print("-"*len(get_headers(table, columns)))
+    # print(clauses)
+    print(bring_forth(table, columns))
+    print("-"*len(bring_forth(table, columns)))
 
     if(len(clauses) != 0):
         data = []
         for row in tables_needed[table]:
-            evaluator = generate_evals(row, table, clauses)
+            evaluator = solve(row, table, clauses)
             if eval(evaluator):
                 for column in columns:
                     data.append(float(row[tables_list[table].index(column)]))
@@ -201,8 +197,8 @@ def distinct_pair_process(dist_pair, tables):
     else:
         table = tables_found[0]
         columns = columns_in_table[table]
-        print(get_headers(table, columns))
-        print("-"*len(get_headers(table, columns)))
+        print(bring_forth(table, columns))
+        print("-"*len(bring_forth(table, columns)))
         result = []
         for row in tables_needed[table]:
             ans = ''
@@ -217,8 +213,8 @@ def distinct_pair_process(dist_pair, tables):
 def normal_where(clauses, columns, table):
     if len(columns) == 1 and columns[0] == '*' and len(clauses) == 0:
         columns = tables_list[table]
-        print(get_headers(table, columns))
-        print("-"*len(get_headers(table, columns)))
+        print(bring_forth(table, columns))
+        print("-"*len(bring_forth(table, columns)))
         for data in tables_needed[table]:
             ans = ''
             for column in columns:
@@ -226,8 +222,8 @@ def normal_where(clauses, columns, table):
             print(ans.strip('\t|'))
     
     elif len(clauses) == 0:
-        print(get_headers(table, columns))
-        print("-"*len(get_headers(table, columns)))
+        print(bring_forth(table, columns))
+        print("-"*len(bring_forth(table, columns)))
         for row in tables_needed[table]:
             ans = ''
             for column in columns:
@@ -237,10 +233,10 @@ def normal_where(clauses, columns, table):
     elif len(clauses) >= 1:
         if len(columns) == 1 and columns[0] == '*':
             columns = tables_list[table]
-        print(get_headers(table, columns))
-        print("-"*len(get_headers(table, columns)))
+        print(bring_forth(table, columns))
+        print("-"*len(bring_forth(table, columns)))
         for row in tables_needed[table]:
-            evaluator = generate_evals(row, table, clauses)
+            evaluator = solve(row, table, clauses)
             ans = ''
             if eval(evaluator):
                 for column in columns:
@@ -262,19 +258,22 @@ def join_where(clauses, columns, tables):
     if len(clauses) > 2:
         sys.stderr.write("Error: Only two clauses joined by ONE or/and is viable.\n")
         quit(-1)
-    print(clauses)
+    # print(clauses)
     
     condition1 = clauses[0]
     for operator in operators:
         if operator in condition1:
             condition1 = condition1.split(operator)
-    # # SAY WHAT
+
     if len(condition1) == 2 and '.' in condition1[1]:
         condition_join(condition1, columns, tables)
     else:
         join_conditionally(now, clauses, columns, tables)
 
 def condition_join(clauses, columns, tables):
+    '''
+        With a condition
+    '''
     if len(clauses) > 2:
         sys.stderr.write("Error: Join condition invalid\n")
         quit(-1)
@@ -323,48 +322,53 @@ def condition_join(clauses, columns, tables):
                 final_columns[table] = []
                 final_tables.append(table)
             final_columns[table].append(column)
-    print(columns_cond, final_columns, final_tables)
+
     display_output(final_tables, final_columns, keep, join=True)
 
-   
-    
 
 def join_conditionally(now, clauses, columns, tables):
+    '''
+        Without a condition
+    '''
     data = join_data(clauses, columns, tables)
 
     columns_in_table = {}
     tables_found = []
-    if len(columns) == 1 and columns[0] == '*':
-        for table in tables:
-            columns_in_table[table] = []
-            for column in tables_list[table]:
-                columns_in_table[table].append(column)
-        tables_found = tables
+    if columns[0] == '*':
+        if len(columns != 1):
+            sys.stderr.write("Error: Select function invalid\n")
+            quit(-1)
+        if len(columns) == 0:
+            for table in tables:
+                columns_in_table[table] = []
+                for column in tables_list[table]:
+                    columns_in_table[table].append(column)
+            tables_found = tables
     else:
         for column in columns:
             table, column = search_column(column, tables)
             if table not in columns_in_table.keys():
-                columns_in_table[table] = []
                 tables_found.append(table)
+                columns_in_table[table] = []
             columns_in_table[table].append(column)
 
     final_data = []
     if now == 'and':
-        for item1 in data[tables[0]]:
-            for item2 in data[tables[1]]:
-                final_data.append(item1 + item2)
+        for obja in data[tables[0]]:
+            for objb in data[tables[1]]:
+                final_data.append(obja + objb)
     elif now == 'or':
-        for item1 in data[tables[0]]:
-            for item2 in tables_needed[tables[1]]:
-                if item2 not in data[tables[1]]:
-                    final_data.append(item1 + item2)
+        for obja in data[tables[0]]:
+            for objb in tables_needed[tables[1]]:
+                if objb not in data[tables[1]]:
+                    final_data.append(obja + objb)
         for item1 in data[tables[1]]:
             for item2 in tables_needed[tables[0]]:
                 if item2 not in data[tables[0]]:
                     final_data.append(item2 + item1)
-        for item1 in data[tables[0]]:
-            for item2 in data[tables[1]]:
-                final_data.append(item1 + item2)
+        for obja in data[tables[0]]:
+            for objb in data[tables[1]]:
+                final_data.append(obja + objb)
     else:
         table1 = list(data.keys())[0]
         flag = False
@@ -373,12 +377,12 @@ def join_conditionally(now, clauses, columns, tables):
             table2 = tables_found[0]
             flag = True
 
-        for item1 in data[table1]:
-            for item2 in tables_needed[table2]:
+        for obja in data[table1]:
+            for objb in tables_needed[table2]:
                 if flag:
-                    final_data.append(item2 + item1)
+                    final_data.append(objb + obja)
                 else:
-                    final_data.append(item1 + item2)
+                    final_data.append(obja + objb)
     display_output(tables_found, columns_in_table, final_data, join=True)
 
 def join_data(clauses, columns, tables):
@@ -395,7 +399,7 @@ def join_data(clauses, columns, tables):
         needed_data[table] = []
         query = query.replace(needed[0], ' ' + column + ' ')
         for data in tables_needed[table]:
-            evaluator = generate_evals(data, table, query)
+            evaluator = solve(data, table, query)
             try:
                 if eval(evaluator):
                     needed_data[table].append(data)
@@ -437,7 +441,7 @@ def join(columns, tables):
         display_output(tables_found, columns_in_table)
         
 
-def get_headers(table, columns):
+def bring_forth(table, columns):
     string = ''
     for column in columns:
         if string != '':
@@ -445,7 +449,7 @@ def get_headers(table, columns):
         string += table + '.' + column
     return string
 
-def generate_evals(row, table, clauses):
+def solve(row, table, clauses):
     evaluator = ''
     clauses = [(re.sub(' +', ' ', i)).strip() for i in clauses.split()]
     for condition in clauses:
@@ -455,18 +459,16 @@ def generate_evals(row, table, clauses):
                 evaluator += ' ' + condition.lower() + ' '
         elif '.' in condition:
             table_found, column = search_column(condition, [table])
-            # print(tables_list[table_here].index(column))
-            # print(row)
             evaluator += row[tables_list[table_found].index(column)]
         elif condition in tables_list[table]:
             evaluator += row[tables_list[table].index(condition)]
         else:
             evaluator += condition
-    # print(evaluator)
     return evaluator
 
 
 def search_column(column, tables):
+    table_found = ''
     if '.' in column:
         table, column = column.split('.')
         table = (re.sub(' +', ' ', table)).strip()
@@ -475,21 +477,20 @@ def search_column(column, tables):
             sys.stderr.write("Error: No such table exists.\n")
             quit(-1)
         return table, column
-    cnt = 0
-    table_found = ''
+    count = 0
     for table in tables:
         if column in tables_list[table]:
-            cnt += 1
+            count += 1
             table_found = table
-    if cnt > 1 or cnt == 0:
+    if count > 1 or count == 0:
         sys.stderr.write("Error: Column name not defined correctly.\n")
         quit(-1)
     return table_found, column
 
 def display_output(tables, columns, data = tables_needed, join=False, distinct=False):
     if distinct and join:
-        header1 = get_headers(tables[0], columns[tables[0]])
-        header2 = get_headers(tables[1], columns[tables[1]])
+        header1 = bring_forth(tables[0], columns[tables[0]])
+        header2 = bring_forth(tables[1], columns[tables[1]])
         print(header1 + '|' + header2)
         print("-"*len(header1 + '|' + header2))
         result = []
@@ -505,7 +506,7 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
         for row in result:
             print(row)
     elif len(tables) == 1 and join:
-        header1 = get_headers(tables[0], columns[tables[0]])
+        header1 = bring_forth(tables[0], columns[tables[0]])
         print(header1)
         print("-"*len(header1))
         for item in data:
@@ -515,8 +516,8 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print(ans.strip('\t|'))
             
     elif join:
-        header1 = get_headers(tables[0], columns[tables[0]])
-        header2 = get_headers(tables[1], columns[tables[1]])
+        header1 = bring_forth(tables[0], columns[tables[0]])
+        header2 = bring_forth(tables[1], columns[tables[1]])
         print(header1 + '|' + header2)
         print("-"*len(header1 + '|' + header2))
         for item in data:
@@ -529,8 +530,8 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print(ans.strip('\t|'))
     else:
         for table in tables:
-            print(get_headers(table, columns[table]))
-            print("-"*len(get_headers(table, columns[table])))
+            print(bring_forth(table, columns[table]))
+            print("-"*len(bring_forth(table, columns[table])))
             for data in data[table]:
                 ans = ''
                 for column in columns[table]:
@@ -539,6 +540,6 @@ def display_output(tables, columns, data = tables_needed, join=False, distinct=F
             print("")
 
 read_metadata(META)
-query = "Select * from table1, table2 where table1.B = table2.B"
+query = sys.argv[1]
 parse_query(query)
     
