@@ -131,7 +131,7 @@ def execute(columns, functions, distincts, dist_pair, tables_inquery, clauses=[]
     if len(dist_pair) != 0:
         distinct_pair_process(dist_pair, tables_inquery)
     elif len(functions) > 0:
-        process_func(clauses, columns, tables_inquery[0], functions) # since only single column
+        process_func(clauses, columns, tables_inquery, functions) # since only single column
     elif len(tables_inquery) == 1:
         normal_where(clauses, columns, tables_inquery[0])
     elif len(tables_inquery) > 1 and len(clauses) == 0:
@@ -139,41 +139,58 @@ def execute(columns, functions, distincts, dist_pair, tables_inquery, clauses=[]
     elif len(tables_inquery) > 1 and len(clauses) > 0:
         join_where(clauses, columns, tables_inquery)
 
-def process_func(clauses, columns, table, functions):
+def process_func(clauses, columns, tables, functions):
     '''
         Process Min, Max, Avg, Sum
     '''
-    columns = []
-    func = functions[0][0]
-    columns.append(functions[0][1])
-    # print(clauses)
-    print(bring_forth(table, columns))
-    print("-"*len(bring_forth(table, columns)))
+    for abc in functions:
+        columns = []
+        func = abc[0]
+        columns.append(abc[1])
+        table, column = '', ''
+        if '.' in columns[0]:
+            table, column = columns[0].split('.')
+        else:
+            count = 0
+            for tab in tables:
+                if columns[0] in tables_list[tab]:
+                    table = tab
+                    column = columns[0]
+                    count += 1
+            if count > 1 or count == 0:
+                sys.stderr.write("Error: Column name not defined correctly.\n")
+                quit(-1)
 
-    if(len(clauses) != 0):
-        data = []
-        for row in tables_needed[table]:
-            evaluator = solve(row, table, clauses)
-            if eval(evaluator):
+        print(bring_forth(table, columns))
+        print("-"*len(bring_forth(table, columns)))
+
+        if(len(clauses) == 1):
+            clausey = [(re.sub(' +', ' ', i)).strip() for i in clauses.split()]
+
+        if(len(clauses) == 1) and columns[0] in clausey:
+            data = []
+            for row in tables_needed[table]:
+                evaluator = solve(row, table, clauses)
+                if eval(evaluator):
+                    for column in columns:
+                        data.append(float(row[tables_list[table].index(column)]))
+        else:
+            data = []
+            for row in tables_needed[table]:
                 for column in columns:
                     data.append(float(row[tables_list[table].index(column)]))
-    else:
-        data = []
-        for row in tables_needed[table]:
-            for column in columns:
-                data.append(float(row[tables_list[table].index(column)]))
-    
-    result = 0
-    if func.lower() == 'avg':
-        result += sum(data) / len(data)
-    elif func.lower() == 'sum':
-        result += sum(data)
-    elif func.lower() == 'max':
-        result = max(data)
-    elif func.lower() == 'min':
-        result = min(data)
+        
+        result = 0
+        if func.lower() == 'avg':
+            result += sum(data) / len(data)
+        elif func.lower() == 'sum':
+            result += sum(data)
+        elif func.lower() == 'max':
+            result = max(data)
+        elif func.lower() == 'min':
+            result = min(data)
 
-    print(result)
+        print(result)
 
 def distinct_pair_process(dist_pair, tables):
     columns_in_table = {}
@@ -185,7 +202,7 @@ def distinct_pair_process(dist_pair, tables):
             columns_in_table[table] = []
             tables_found.append(table)
         columns_in_table[table].append(column)
-    print(tables_found, columns_in_table)
+    # print(tables_found, columns_in_table)
 
     if len(tables_found) > 1:
         data_injoin = []
@@ -330,19 +347,17 @@ def join_conditionally(now, clauses, columns, tables):
         Without a condition
     '''
     data = join_data(clauses, columns, tables)
-
     columns_in_table = {}
     tables_found = []
     if columns[0] == '*':
-        if len(columns != 1):
+        if len(columns) != 1:
             sys.stderr.write("Error: Select function invalid\n")
             quit(-1)
-        if len(columns) == 0:
-            for table in tables:
-                columns_in_table[table] = []
-                for column in tables_list[table]:
-                    columns_in_table[table].append(column)
-            tables_found = tables
+        for table in tables:
+            columns_in_table[table] = []
+            for column in tables_list[table]:
+                columns_in_table[table].append(column)
+        tables_found = tables
     else:
         for column in columns:
             table, column = search_column(column, tables)
